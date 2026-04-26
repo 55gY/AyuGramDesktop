@@ -12,6 +12,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Set up Git
+        uses: git-for-windows/setup-git-for-windows@v1
       - name: Read version
         id: version
         shell: pwsh
@@ -30,12 +36,21 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-      - name: Verify preconfigured build directory
+      - name: Prepare build dependencies
+        shell: pwsh
+        env:
+          Platform: x64
+        run: |
+          New-Item -ItemType Directory -Force -Path ..\Libraries | Out-Null
+          New-Item -ItemType Directory -Force -Path ..\win64\Libraries | Out-Null
+          New-Item -ItemType Directory -Force -Path ..\ThirdParty | Out-Null
+          Set-Location Telegram\build\prepare
+          .\win.bat silent
+      - name: Configure project
         shell: pwsh
         run: |
-          if (-not (Test-Path "out")) {
-            Write-Error "Missing preconfigured out directory. This workflow expects the repository to already contain a configured out/ tree."
-          }
+          Set-Location Telegram
+          .\configure.bat x64 -D TDESKTOP_API_ID=2040 -D TDESKTOP_API_HASH=b18441a1ff607e10a989891a5462e627
       - name: Build Telegram Debug
         shell: pwsh
         run: cmake --build out --config Debug --target Telegram
