@@ -1,0 +1,61 @@
+name: Windows x64 Minimal Build
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-windows-x64:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Read version
+        id: version
+        shell: pwsh
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          $versionLine = Select-String -Path "Telegram/build/version" -Pattern '^AppVersionStr\s+(.+)$'
+          if (-not $versionLine) {
+            Write-Error "Failed to read AppVersionStr from Telegram/build/version"
+          }
+          $version = $versionLine.Matches[0].Groups[1].Value.Trim()
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=v$version-pre.$env:RUN_NUMBER" >> $env:GITHUB_OUTPUT
+      - name: Set up MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Verify preconfigured build directory
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "out")) {
+            Write-Error "Missing preconfigured out directory. This workflow expects the repository to already contain a configured out/ tree."
+          }
+      - name: Build Telegram Debug
+        shell: pwsh
+        run: cmake --build out --config Debug --target Telegram
+      - name: Prepare release files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "releases" | Out-Null
+          Copy-Item "out/Debug/Telegram.exe" "releases/AyuGram.exe" -Force
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ayugram-windows-x64-debug
+          path: |
+            releases/AyuGram.exe
+          if-no-files-found: error
+      - name: Create prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: AyuGram v${ steps.version.outputs.version }} pre.${ github.run_number }}
+          prerelease: true
+          generate_release_notes: true
+          files: |
+            releases/AyuGram.exe
