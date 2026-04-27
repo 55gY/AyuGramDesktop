@@ -55,17 +55,15 @@ jobs:
           restore-keys: |
             windows-x64-deps-
       - name: Prepare build dependencies
-        shell: pwsh
+        shell: cmd
         env:
           Platform: x64
-        run: |
-          Set-Location Telegram\build\prepare
-          .\win.bat silent
+        run: Telegram\build\prepare\win.bat silent
       - name: Configure project
-        shell: pwsh
+        shell: cmd
         run: |
-          Set-Location Telegram
-          .\configure.bat x64 -D TDESKTOP_API_ID=2040 -D TDESKTOP_API_HASH=b18441a1ff607e10a989891a5462e627
+          cd Telegram
+          configure.bat x64 -D TDESKTOP_API_ID=2040 -D TDESKTOP_API_HASH=b18441a1ff607e10a989891a5462e627
       - name: Build Telegram Debug
         shell: pwsh
         run: cmake --build out --config Debug --target Telegram
@@ -73,7 +71,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "releases" | Out-Null
-          Copy-Item "out/Debug/Telegram.exe" "releases/AyuGram.exe" -Force
+          Copy-Item "out/Debug/AyuGram.exe" "releases/AyuGram.exe" -Force
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
